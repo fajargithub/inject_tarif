@@ -36,6 +36,9 @@ namespace InjectServiceWorker.Services
                 return;
             }
 
+            //await GetFolderListName(); return;
+            GetAllFileNames(donePath); return;
+
             try
             {
                 // Create an ArrayList to store all rows from all files
@@ -81,7 +84,7 @@ namespace InjectServiceWorker.Services
 
                                 // Add the row to our main collection
                                 //allRows.Add(rowData);
-                                if (rowData.Count > 0)
+                                if (rowData.Count > 0 && row > 0)
                                 { 
                                     ServiceRateProviderModel model = new ServiceRateProviderModel();
                                     model.kd_tarif = rowData[0] != null ? rowData[0].ToString() : "";
@@ -96,7 +99,7 @@ namespace InjectServiceWorker.Services
                                     model.nm_tarif_payor = rowData[13] != null ? rowData[13].ToString() : "";
                                     model.kd_tarif_pro = rowData[14] != null ? rowData[14].ToString() : "";
                                     model.nm_tarif_pro = rowData[15] != null ? rowData[15].ToString() : "";
-                                    model.efective_date = rowData[16] != null ? DateTime.ParseExact(rowData[16].ToString(), "MM/dd/yyyy", System.Globalization.CultureInfo.InvariantCulture) : null;
+                                    model.efective_date = rowData[16] != null ? DateTime.ParseExact(rowData[16].ToString(), "dd-MMM-yyyy", System.Globalization.CultureInfo.InvariantCulture) : null;
                                     model.hg_jua_new = rowData[17] != null ? Decimal.Parse(rowData[17].ToString()) : 0;
                                     model.agreement_type = rowData[18] != null ? rowData[18].ToString() : "";
 
@@ -104,8 +107,13 @@ namespace InjectServiceWorker.Services
                                 }
                             }
                         }
+
+                        //Move file here
+                        MoveFile(filePath, donePath);
                     }
                 }
+
+                //await UpdateInjectTblRateProvider();
             }
             catch (Exception ex) {
                 Console.WriteLine(ex);
@@ -118,7 +126,7 @@ namespace InjectServiceWorker.Services
             {
                 // Execute the stored procedure
                 await _dbContext.Database.ExecuteSqlRawAsync(
-                         "BEGIN INSERT_LOG_SCANDOC(:p_kd_tarif, :p_nm_tarif, :p_hg_jua, :p_provider_code, " +
+                         "BEGIN INSERT_TBL_RATE_PROVIDER(:p_kd_tarif, :p_nm_tarif, :p_hg_jua, :p_provider_code, " +
                          ":p_kd_holding, :p_item_id, :p_disc, :p_disc_rp, :p_kd_tarif_payor, " +
                          ":p_nm_tarif_payor, :p_kd_tarif_pro, :p_nm_tarif_pro, :p_efective_date, :p_hg_jua_new, :p_agreement_type, :cv_1); END;",
                          new OracleParameter("p_kd_tarif", param.kd_tarif),
@@ -142,6 +150,133 @@ namespace InjectServiceWorker.Services
             catch (Exception ex)
             {
                 Console.WriteLine(ex);
+            }
+        }
+
+        public async Task UpdateInjectTblRateProvider()
+        {
+            try
+            {
+                // Execute the stored procedure
+                var result = await _dbContext.Database.ExecuteSqlRawAsync("BEGIN INJECT_TBL_RATE_PROVIDER; END;");
+                Console.WriteLine(result);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
+
+        public void MoveFile(string sourceFile, string destinationFolder)
+        {
+            try
+            {
+                // Verify source file exists
+                if (!File.Exists(sourceFile))
+                {
+                    Console.WriteLine("Source file does not exist");
+                    return;
+                }
+
+                // Create destination directory if it doesn't exist
+                Directory.CreateDirectory(destinationFolder);
+
+                string destinationFile = Path.Combine(destinationFolder, Path.GetFileName(sourceFile));
+
+                // Perform the move operation
+                File.Move(sourceFile, destinationFile, overwrite: true);
+                Console.WriteLine($"Successfully moved file to: {destinationFile}");
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Console.WriteLine($"Permission denied: {ex.Message}");
+            }
+            catch (IOException ex)
+            {
+                Console.WriteLine($"IO error: {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error moving file: {ex.Message}");
+            }
+        }
+
+        public async Task GetFolderListName()
+        {
+
+            // Get all subdirectories in the path
+            string path = $@"\\cluster-nas\FTP\FTP\YAKESPENANTAM\SOFTCOPY_DCS\2025\5\28";
+            string batchList = string.Empty;
+            string[] folders = Directory.GetDirectories(path);
+
+            Console.WriteLine("Folders:");
+            foreach (string folder in folders)
+            {
+                // Get only the folder name, not the full path
+                string folderName = Path.GetFileName(folder);
+                batchList += "'" + folderName + "'" + ", ";
+            }
+
+            var strBatchList = batchList.TrimEnd(',', ' ');
+            Console.WriteLine(strBatchList);
+
+            try
+            {
+                var strquery = "SELECT batch_no, kd_holding from tbl_claim_batch WHERE kd_holding != 'CH0022' AND batch_no in (" + strBatchList + ")";
+                var result = await _dbContext.BatchResponses.FromSqlRaw(strquery).AsNoTracking().ToListAsync();
+                if (result.Count() > 0)
+                { 
+                    for(int i=0; i <result.Count(); i++)
+                    {
+                        string folderPath = path + "\\" + result[i].batch_no;
+
+                        if (Directory.Exists(folderPath))
+                        {
+                            // Delete folder and all its contents
+                            Directory.Delete(folderPath, recursive: true);
+                            Console.WriteLine("Folder deleted successfully.");
+                        }
+                        else
+                        {
+                            Console.WriteLine("Folder does not exist.");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            { 
+                Console.WriteLine(ex);
+            }
+        }
+
+        public void GetAllFileNames(string folderPath)
+        {
+            //string folderPath = @"C:\YourFolderPath"; // Replace with your folder path
+
+            try
+            {
+                // Get all file names in the directory
+                string[] fileNames = Directory.GetFiles(folderPath)
+                                            .Select(Path.GetFileName)
+                                            .ToArray();
+
+                // Join file names with commas
+                string commaSeparated = string.Join(", ", fileNames);
+
+                Console.WriteLine("Files in folder:");
+                Console.WriteLine(commaSeparated);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                Console.WriteLine("Directory not found!");
+            }
+            catch (UnauthorizedAccessException)
+            {
+                Console.WriteLine("No permission to access the directory!");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
             }
         }
     }
