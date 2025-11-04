@@ -251,7 +251,7 @@ namespace InjectServiceWorker.Services
 
         public void GetAllFileNames(string folderPath)
         {
-            //string folderPath = @"C:\YourFolderPath"; // Replace with your folder path
+            //string folderPath = @"C:\YourFolderPath"; // Replace with your folder path test
 
             try
             {
