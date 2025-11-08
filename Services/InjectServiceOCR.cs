@@ -5,12 +5,7 @@ using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
 using Oracle.ManagedDataAccess.Client;
 using Quartz;
-using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace InjectServiceWorker.Services
 {
@@ -101,6 +96,7 @@ namespace InjectServiceWorker.Services
                                     {
                                         if (arrGroupTarif.Count() == 3 && !string.IsNullOrEmpty(rowData[0].ToString()))
                                         {
+                                            model.file_upload_reff = filename;
                                             model.kd_holding = kd_holding;
                                             model.provider_code = provider_code;
                                             model.group_tarif = arrGroupTarif[0];
@@ -137,17 +133,18 @@ namespace InjectServiceWorker.Services
             {
                 // Execute the stored procedure
                 await _dbContext.Database.ExecuteSqlRawAsync(
-                         "BEGIN INSERT_TBL_RATE_INDEMNITY(:p_kd_holding, :p_provider_code, :p_group_tarif, :p_sub_tarif, :p_nm_tarif, " +
-                         ":p_hg_jua, p:_disc, :p_disc_rp, :p_kd_tarif_pro, :p_efective_date, :cv_1); END;",
-                         new OracleParameter("p_kd_holding", param.p_kd_holding),
+                         "BEGIN INSERT_TBL_RATE_INDEMNITY(:p_file_upload_reff, :p_kd_holding, :p_provider_code, :p_group_tarif, :p_sub_tarif, :p_nm_tarif, " +
+                         ":p_hg_jua, :p_disc, :p_disc_rp, :p_kd_tarif_pro, :p_efective_date, :cv_1); END;",
+                         new OracleParameter("p_file_upload_reff", param.file_upload_reff),
+                         new OracleParameter("p_kd_holding", param.kd_holding),
                          new OracleParameter("p_provider_code", param.provider_code),
                          new OracleParameter("p_group_tarif", param.group_tarif),
                          new OracleParameter("p_sub_tarif", param.sub_tarif),
                          new OracleParameter("p_nm_tarif", param.nm_tarif),
                          new OracleParameter("p_hg_jua", param.hg_jua),
                          new OracleParameter("p_disc", param.disc_rp),
-                         new OracleParameter("p_disc_rp", param.kd_tarif_payor),
-                         new OracleParameter("p_kd_tarif_pro", param.nm_tarif_payor),
+                         new OracleParameter("p_disc_rp", param.disc_rp),
+                         new OracleParameter("p_kd_tarif_pro", param.kd_tarif_pro),
                          new OracleParameter("p_efective_date", OracleDbType.Date, param.effective_date, System.Data.ParameterDirection.Input),
                          new OracleParameter("cv_1", OracleDbType.RefCursor, System.Data.ParameterDirection.Output)
                      );

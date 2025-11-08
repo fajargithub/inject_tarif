@@ -25,8 +25,11 @@ IHost host = Host.CreateDefaultBuilder(args)
             q.UseMicrosoftDependencyInjectionJobFactory();
 
             // Create a job and trigger
-            var jobKey = new JobKey("FileMoverJob");
-            q.AddJob<FileMoverJob>(opts => opts.WithIdentity(jobKey));
+            //var jobKey = new JobKey("FileMoverJob");
+            //q.AddJob<FileMoverJob>(opts => opts.WithIdentity(jobKey));
+
+            var jobKey = new JobKey("InjectServiceOCR");
+            q.AddJob<InjectServiceOCR>(opts => opts.WithIdentity(jobKey));
 
             //q.AddTrigger(opts => opts
             //    .ForJob(jobKey)

@@ -8,7 +8,7 @@ namespace InjectServiceWorker.Models
 {
     public class InjectServiceOCRModel
     { 
-        public string? p_kd_holding { get; set; }
+        public string? file_upload_reff { get; set; }
         public string? group_tarif { get; set; }
         public string? sub_tarif { get; set; }
         public string? nm_tarif { get; set; }
