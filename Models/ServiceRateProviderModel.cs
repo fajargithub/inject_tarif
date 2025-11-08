@@ -6,6 +6,24 @@ using System.Threading.Tasks;
 
 namespace InjectServiceWorker.Models
 {
+    public class InjectServiceOCRModel
+    { 
+        public string? group_tarif { get; set; }
+        public string? sub_tarif { get; set; }
+        public string? nm_tarif { get; set; }
+        public decimal? hg_jua { get; set; }
+        public string? provider_code { get; set; }
+        public string? kd_holding { get; set; }
+        public string? item_id { get; set; }
+        public decimal? disc { get; set; }
+        public decimal? disc_rp { get; set; }
+        public string? kd_tarif_pro { get; set; }
+        public string? nm_tarif_pro { get; set; }
+        public string? kd_tarif_payor { get; set; }
+        public string? nm_tarif_payor { get; set; }
+        public DateTime? effective_date { get; set; }
+        public string? kd_tarif { get; set; }
+    }
     public class ServiceRateProviderModel
     {
         public string? kd_tarif { get; set; }
