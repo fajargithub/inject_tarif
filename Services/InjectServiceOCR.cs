@@ -1,4 +1,5 @@
 ﻿using InjectServiceWorker.Models;
+using Microsoft.EntityFrameworkCore;
 using NPOI.HSSF.UserModel;
 using NPOI.SS.UserModel;
 using NPOI.XSSF.UserModel;
@@ -34,9 +35,6 @@ namespace InjectServiceWorker.Services
                 return;
             }
 
-            //await GetFolderListName(); return;
-            //GetAllFileNames(donePath); return;
-
             try
             {
                 // Create an ArrayList to store all rows from all files
@@ -62,6 +60,18 @@ namespace InjectServiceWorker.Services
                         }
 
                         Console.WriteLine($"Reading file: {Path.GetFileName(filePath)}");
+
+                        var filename = Path.GetFileName(filePath);
+                        var arrFilename = filename.Split("_");
+                        if(arrFilename.Length != 3)
+                        {
+                            //Move file here
+                            MoveFile(filePath, invalidPath);
+                            continue;
+                        }
+
+                        var kd_holding = arrFilename[0].Trim();
+                        var provider_code = arrFilename[1].Trim();
 
                         // Get the first sheet
                         var sheet = workbook.GetSheetAt(0);
@@ -91,6 +101,8 @@ namespace InjectServiceWorker.Services
                                     {
                                         if (arrGroupTarif.Count() == 3 && !string.IsNullOrEmpty(rowData[0].ToString()))
                                         {
+                                            model.kd_holding = kd_holding;
+                                            model.provider_code = provider_code;
                                             model.group_tarif = arrGroupTarif[0];
                                             model.sub_tarif = arrGroupTarif[1];
                                             model.nm_tarif = arrGroupTarif[2];
@@ -98,29 +110,10 @@ namespace InjectServiceWorker.Services
                                             model.hg_jua = rowData[2] != null ? decimal.Parse(rowData[2].ToString()) : 0;
                                             model.disc = rowData[3] != null ? decimal.Parse(rowData[3].ToString()) : 0;
                                             model.disc_rp = rowData[4] != null ? decimal.Parse(rowData[4].ToString()) : 0;
-                                            model.effective_date = rowData[16] != null ? DateTime.ParseExact(rowData[16].ToString(), "dd-MMM-yyyy", System.Globalization.CultureInfo.InvariantCulture) : null;
-                                            model.kd_holding = rowData[17] != null ? rowData[17].ToString() : "";
-
+                                            model.effective_date = rowData[5] != null ? DateTime.ParseExact(rowData[5].ToString(), "dd-MMM-yyyy", System.Globalization.CultureInfo.InvariantCulture) : null;
+                                            await InsertTblRateIndemnity(model);
                                         }
                                     }
-
-                                    //model.kd_tarif = rowData[0] != null ? rowData[0].ToString() : "";
-                                    //model.nm_tarif = rowData[1] != null ? rowData[1].ToString() : "";
-                                    //model.hg_jua = rowData[2] != null ? Decimal.Parse(rowData[2].ToString()) : 0;
-                                    //model.provider_code = rowData[3] != null ? rowData[3].ToString() : "";
-                                    //model.kd_holding = rowData[4] != null ? rowData[4].ToString() : "";
-                                    //model.item_id = rowData[5] != null ? rowData[5].ToString() : "";
-                                    //model.disc = rowData[10] != null ? Decimal.Parse(rowData[10].ToString()) : 0;
-                                    //model.disc_rp = rowData[11] != null ? Decimal.Parse(rowData[11].ToString()) : 0;
-                                    //model.kd_tarif_payor = rowData[12] != null ? rowData[12].ToString() : "";
-                                    //model.nm_tarif_payor = rowData[13] != null ? rowData[13].ToString() : "";
-                                    //model.kd_tarif_pro = rowData[14] != null ? rowData[14].ToString() : "";
-                                    //model.nm_tarif_pro = rowData[15] != null ? rowData[15].ToString() : "";
-                                    //model.efective_date = rowData[16] != null ? DateTime.ParseExact(rowData[16].ToString(), "dd-MMM-yyyy", System.Globalization.CultureInfo.InvariantCulture) : null;
-                                    //model.hg_jua_new = rowData[17] != null ? Decimal.Parse(rowData[17].ToString()) : 0;
-                                    //model.agreement_type = rowData[18] != null ? rowData[18].ToString() : "";
-
-                                    //await InsertTblRateProvider(model);
                                 }
                             }
                         }
@@ -138,46 +131,26 @@ namespace InjectServiceWorker.Services
             }
         }
 
-        public async Task InsertTblRateProvider(ServiceRateProviderModel param)
+        public async Task InsertTblRateIndemnity(InjectServiceOCRModel param)
         {
             try
             {
                 // Execute the stored procedure
                 await _dbContext.Database.ExecuteSqlRawAsync(
-                         "BEGIN INSERT_TBL_RATE_PROVIDER(:p_kd_tarif, :p_nm_tarif, :p_hg_jua, :p_provider_code, " +
-                         ":p_kd_holding, :p_item_id, :p_disc, :p_disc_rp, :p_kd_tarif_payor, " +
-                         ":p_nm_tarif_payor, :p_kd_tarif_pro, :p_nm_tarif_pro, :p_efective_date, :p_hg_jua_new, :p_agreement_type, :cv_1); END;",
-                         new OracleParameter("p_kd_tarif", param.kd_tarif),
+                         "BEGIN INSERT_TBL_RATE_INDEMNITY(:p_kd_holding, :p_provider_code, :p_group_tarif, :p_sub_tarif, :p_nm_tarif, " +
+                         ":p_hg_jua, p:_disc, :p_disc_rp, :p_kd_tarif_pro, :p_efective_date, :cv_1); END;",
+                         new OracleParameter("p_kd_holding", param.p_kd_holding),
+                         new OracleParameter("p_provider_code", param.provider_code),
+                         new OracleParameter("p_group_tarif", param.group_tarif),
+                         new OracleParameter("p_sub_tarif", param.sub_tarif),
                          new OracleParameter("p_nm_tarif", param.nm_tarif),
                          new OracleParameter("p_hg_jua", param.hg_jua),
-                         new OracleParameter("p_provider_code", param.provider_code),
-                         new OracleParameter("p_kd_holding", param.kd_holding),
-                         new OracleParameter("p_item_id", param.item_id),
-                         new OracleParameter("p_disc", param.disc),
-                         new OracleParameter("p_disc_rp", param.disc_rp),
-                         new OracleParameter("p_kd_tarif_payor", param.kd_tarif_payor),
-                         new OracleParameter("p_nm_tarif_payor", param.nm_tarif_payor),
-                         new OracleParameter("p_kd_tarif_pro", param.kd_tarif_pro),
-                         new OracleParameter("p_nm_tarif_pro", param.nm_tarif_pro),
-                         new OracleParameter("p_efective_date", OracleDbType.Date, param.efective_date, System.Data.ParameterDirection.Input),
-                         new OracleParameter("p_hg_jua_new", param.hg_jua_new),
-                         new OracleParameter("p_agreement_type", param.agreement_type),
+                         new OracleParameter("p_disc", param.disc_rp),
+                         new OracleParameter("p_disc_rp", param.kd_tarif_payor),
+                         new OracleParameter("p_kd_tarif_pro", param.nm_tarif_payor),
+                         new OracleParameter("p_efective_date", OracleDbType.Date, param.effective_date, System.Data.ParameterDirection.Input),
                          new OracleParameter("cv_1", OracleDbType.RefCursor, System.Data.ParameterDirection.Output)
                      );
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
-        }
-
-        public async Task UpdateInjectTblRateProvider()
-        {
-            try
-            {
-                // Execute the stored procedure
-                var result = await _dbContext.Database.ExecuteSqlRawAsync("BEGIN INJECT_TBL_RATE_PROVIDER; END;");
-                Console.WriteLine(result);
             }
             catch (Exception ex)
             {
