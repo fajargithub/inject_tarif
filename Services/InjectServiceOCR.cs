@@ -57,16 +57,16 @@ namespace InjectServiceWorker.Services
                         Console.WriteLine($"Reading file: {Path.GetFileName(filePath)}");
 
                         var filename = Path.GetFileName(filePath);
-                        var arrFilename = filename.Split("_");
-                        if(arrFilename.Length != 3)
-                        {
-                            //Move file here
-                            MoveFile(filePath, invalidPath);
-                            continue;
-                        }
+                        //var arrFilename = filename.Split("_");
+                        //if(arrFilename.Length != 3)
+                        //{
+                        //    //Move file here
+                        //    MoveFile(filePath, invalidPath);
+                        //    continue;
+                        //}
 
-                        var kd_holding = arrFilename[0].Trim();
-                        var provider_code = arrFilename[1].Trim();
+                        //var kd_holding = arrFilename[0].Trim();
+                        //var provider_code = arrFilename[1].Trim();
 
                         // Get the first sheet
                         var sheet = workbook.GetSheetAt(0);
@@ -77,7 +77,6 @@ namespace InjectServiceWorker.Services
                             var currentRow = sheet.GetRow(row);
                             if (currentRow != null)
                             {
-                                // Create a list for the current row's data
                                 ArrayList rowData = new ArrayList();
 
                                 for (int col = 0; col < currentRow.LastCellNum; col++)
@@ -85,37 +84,33 @@ namespace InjectServiceWorker.Services
                                     rowData.Add(currentRow.GetCell(col)?.ToString());
                                 }
 
-                                // Add the row to our main collection
-                                //allRows.Add(rowData);
                                 if (rowData.Count > 0 && row > 0)
                                 {
                                     InjectServiceOCRModel model = new InjectServiceOCRModel();
-
-                                    var arrGroupTarif = rowData[0] != null ? rowData[1].ToString().Split("::") : new string[] { "" };
                                     if (rowData[0] != null)
                                     {
-                                        if (arrGroupTarif.Count() == 3 && !string.IsNullOrEmpty(rowData[0].ToString()))
-                                        {
-                                            model.file_upload_reff = filename;
-                                            model.kd_holding = kd_holding;
-                                            model.provider_code = provider_code;
-                                            model.group_tarif = arrGroupTarif[0];
-                                            model.sub_tarif = arrGroupTarif[1];
-                                            model.nm_tarif = arrGroupTarif[2];
-                                            model.kd_tarif_pro = rowData[0].ToString();
-                                            model.hg_jua = rowData[2] != null ? decimal.Parse(rowData[2].ToString()) : 0;
-                                            model.disc = rowData[3] != null ? decimal.Parse(rowData[3].ToString()) : 0;
-                                            model.disc_rp = rowData[4] != null ? decimal.Parse(rowData[4].ToString()) : 0;
-                                            model.effective_date = rowData[5] != null ? DateTime.ParseExact(rowData[5].ToString(), "dd-MMM-yyyy", System.Globalization.CultureInfo.InvariantCulture) : null;
-                                            await InsertTblRateIndemnity(model);
-                                        }
+                                        model.upload_reff = filename;
+                                        model.provider_service_code = rowData[11].ToString();
+                                        model.payor_code_indemnity = rowData[0].ToString();
+                                        model.payor_code_mc = rowData[1].ToString();
+                                        model.agreement_type_id = rowData[2].ToString();
+                                        model.provider_code = rowData[10].ToString();
+                                        model.service_name = rowData[12].ToString();
+                                        model.service_class = rowData[14].ToString();
+                                        model.price = rowData[15] != null ? decimal.Parse(rowData[15].ToString()) : 0;
+                                        model.fixed_price = rowData[16] != null ? decimal.Parse(rowData[16].ToString()) : 0;
+                                        model.disc = rowData[17] != null ? decimal.Parse(rowData[17].ToString()) : 0;
+                                        model.disc_amount = 0;
+                                        model.effective_date = rowData[31] != null ? DateTime.ParseExact(rowData[31].ToString(), "dd-MMM-yyyy", System.Globalization.CultureInfo.InvariantCulture) : null;
+                                        model.admedika_detail_service_code = rowData[7].ToString();
+                                        await InsertTblRateIndemnity(model);
                                     }
                                 }
                             }
                         }
 
                         //Move file here
-                        MoveFile(filePath, donePath);
+                        //MoveFile(filePath, donePath);
                     }
                 }
 
@@ -132,22 +127,27 @@ namespace InjectServiceWorker.Services
             try
             {
                 // Execute the stored procedure
-                await _dbContext.Database.ExecuteSqlRawAsync(
-                         "BEGIN INSERT_TBL_RATE_INDEMNITY(:p_file_upload_reff, :p_kd_holding, :p_provider_code, :p_group_tarif, :p_sub_tarif, :p_nm_tarif, " +
-                         ":p_hg_jua, :p_disc, :p_disc_rp, :p_kd_tarif_pro, :p_efective_date, :cv_1); END;",
-                         new OracleParameter("p_file_upload_reff", param.file_upload_reff),
-                         new OracleParameter("p_kd_holding", param.kd_holding),
+                var result = await _dbContext.Database.ExecuteSqlRawAsync(
+                         "BEGIN INSERT_TBL_SERVICE_PROVIDER(:p_provider_service_code, :p_upload_reff, :p_payor_code_indemnity, :p_payor_code_mc, :p_agreement_type_id, :p_provider_code, :p_service_name, " +
+                         ":p_service_class, :p_price, :p_fixed_price, :p_disc, :p_disc_amount, :p_effective_date, :p_admedika_detail_service_code, :cv_1); END;",
+                         new OracleParameter("p_provider_service_code", param.provider_service_code),
+                         new OracleParameter("p_upload_reff", param.upload_reff),
+                         new OracleParameter("p_payor_code_indemnity", param.payor_code_indemnity),
+                         new OracleParameter("p_payor_code_mc", param.payor_code_mc),
+                         new OracleParameter("p_agreement_type_id", param.agreement_type_id),
                          new OracleParameter("p_provider_code", param.provider_code),
-                         new OracleParameter("p_group_tarif", param.group_tarif),
-                         new OracleParameter("p_sub_tarif", param.sub_tarif),
-                         new OracleParameter("p_nm_tarif", param.nm_tarif),
-                         new OracleParameter("p_hg_jua", param.hg_jua),
-                         new OracleParameter("p_disc", param.disc_rp),
-                         new OracleParameter("p_disc_rp", param.disc_rp),
-                         new OracleParameter("p_kd_tarif_pro", param.kd_tarif_pro),
-                         new OracleParameter("p_efective_date", OracleDbType.Date, param.effective_date, System.Data.ParameterDirection.Input),
+                         new OracleParameter("p_service_name", param.service_name),
+                         new OracleParameter("p_service_class", param.service_class),
+                         new OracleParameter("p_price", param.price),
+                         new OracleParameter("p_fixed_price", param.fixed_price),
+                         new OracleParameter("p_disc", param.disc),
+                         new OracleParameter("p_disc_amount", param.disc_amount),
+                         new OracleParameter("p_effective_date", OracleDbType.Date, param.effective_date, System.Data.ParameterDirection.Input),
+                         new OracleParameter("p_admedika_detail_service_code", param.admedika_detail_service_code),
                          new OracleParameter("cv_1", OracleDbType.RefCursor, System.Data.ParameterDirection.Output)
                      );
+
+                Console.WriteLine(result);
             }
             catch (Exception ex)
             {
@@ -186,85 +186,6 @@ namespace InjectServiceWorker.Services
             catch (Exception ex)
             {
                 Console.WriteLine($"Error moving file: {ex.Message}");
-            }
-        }
-
-        public async Task GetFolderListName()
-        {
-
-            // Get all subdirectories in the path
-            string path = $@"\\cluster-nas\FTP\FTP\YAKESPENANTAM\SOFTCOPY_DCS\2025\5\28";
-            string batchList = string.Empty;
-            string[] folders = Directory.GetDirectories(path);
-
-            Console.WriteLine("Folders:");
-            foreach (string folder in folders)
-            {
-                // Get only the folder name, not the full path
-                string folderName = Path.GetFileName(folder);
-                batchList += "'" + folderName + "'" + ", ";
-            }
-
-            var strBatchList = batchList.TrimEnd(',', ' ');
-            Console.WriteLine(strBatchList);
-
-            try
-            {
-                var strquery = "SELECT batch_no, kd_holding from tbl_claim_batch WHERE kd_holding != 'CH0022' AND batch_no in (" + strBatchList + ")";
-                var result = await _dbContext.BatchResponses.FromSqlRaw(strquery).AsNoTracking().ToListAsync();
-                if (result.Count() > 0)
-                {
-                    for (int i = 0; i < result.Count(); i++)
-                    {
-                        string folderPath = path + "\\" + result[i].batch_no;
-
-                        if (Directory.Exists(folderPath))
-                        {
-                            // Delete folder and all its contents
-                            Directory.Delete(folderPath, recursive: true);
-                            Console.WriteLine("Folder deleted successfully.");
-                        }
-                        else
-                        {
-                            Console.WriteLine("Folder does not exist.");
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
-        }
-
-        public void GetAllFileNames(string folderPath)
-        {
-            //string folderPath = @"C:\YourFolderPath"; // Replace with your folder path test
-
-            try
-            {
-                // Get all file names in the directory
-                string[] fileNames = Directory.GetFiles(folderPath)
-                                            .Select(Path.GetFileName)
-                                            .ToArray();
-
-                // Join file names with commas
-                string commaSeparated = string.Join(", ", fileNames);
-
-                Console.WriteLine("Files in folder:");
-                Console.WriteLine(commaSeparated);
-            }
-            catch (DirectoryNotFoundException)
-            {
-                Console.WriteLine("Directory not found!");
-            }
-            catch (UnauthorizedAccessException)
-            {
-                Console.WriteLine("No permission to access the directory!");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"An error occurred: {ex.Message}");
             }
         }
     }

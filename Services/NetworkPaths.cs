@@ -13,9 +13,9 @@ namespace InjectServiceWorker.Services
         public const string invalidPath = @"D:\INJECT_TARIF\Invalid";
         public const string errorPath = @"D:\INJECT_TARIF\Error";
 
-        public const string sourcePath2 = @"D:\INJECT_TARIF2";
-        public const string donePath2 = @"D:\INJECT_TARIF2\Done";
-        public const string invalidPath2 = @"D:\INJECT_TARIF2\Invalid";
-        public const string errorPath2 = @"D:\INJECT_TARIF2\Error";
+        public const string sourcePath2 = @"D:\INJECT_TARIF_NEW";
+        public const string donePath2 = @"D:\INJECT_TARIF_NEW\Done";
+        public const string invalidPath2 = @"D:\INJECT_TARIF_NEW\Invalid";
+        public const string errorPath2 = @"D:\INJECT_TARIF_NEW\Error";
     }
 }
