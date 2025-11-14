@@ -18,6 +18,7 @@ IHost host = Host.CreateDefaultBuilder(args)
 
         // Add your job to DI
         services.AddTransient<FileMoverJob>();
+        services.AddTransient<InjectServiceOCR>();
 
         // Add Quartz.NET services
         services.AddQuartz(q =>
@@ -28,8 +29,8 @@ IHost host = Host.CreateDefaultBuilder(args)
             //var jobKey = new JobKey("FileMoverJob");
             //q.AddJob<FileMoverJob>(opts => opts.WithIdentity(jobKey));
 
-            var jobKey = new JobKey("InjectServiceOCR");
-            q.AddJob<InjectServiceOCR>(opts => opts.WithIdentity(jobKey));
+            //var jobKey = new JobKey("InjectServiceOCR");
+            //q.AddJob<InjectServiceOCR>(opts => opts.WithIdentity(jobKey));
 
             //q.AddTrigger(opts => opts
             //    .ForJob(jobKey)
@@ -44,12 +45,25 @@ IHost host = Host.CreateDefaultBuilder(args)
             //        .WithIntervalInSeconds(30) // Run every 30 seconds
             //        .RepeatForever())); // Keep repeating
 
+            //q.AddTrigger(opts => opts
+            //    .ForJob(jobKey)
+            //    .WithIdentity("FileMoverTrigger")
+            //    .StartNow() // Start immediately
+            //    .WithSimpleSchedule(x => x
+            //        .WithRepeatCount(0))); // Do not repeat
+
+            var jobKey = new JobKey("InjectServiceOCR");
+            q.AddJob<InjectServiceOCR>(opts => opts
+                .WithIdentity(jobKey)
+                .DisallowConcurrentExecution());
+
+            // Configure trigger for every 1 minute
             q.AddTrigger(opts => opts
                 .ForJob(jobKey)
                 .WithIdentity("FileMoverTrigger")
-                .StartNow() // Start immediately
                 .WithSimpleSchedule(x => x
-                    .WithRepeatCount(0))); // Do not repeat
+                    .WithIntervalInMinutes(1)
+                    .RepeatForever()));
         });
     })
     .Build();
