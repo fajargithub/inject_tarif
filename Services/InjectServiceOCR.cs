@@ -176,7 +176,7 @@ namespace InjectServiceWorker.Services
             {
                 // Execute the stored procedure
                 var result = await _dbContext.Database.ExecuteSqlRawAsync(
-                         "BEGIN INSERT_TBL_SERVICE_PROVIDER(:p_group_service, :p_sub_service, :p_provider_service_code, :p_upload_reff, :p_payor_code_indemnity, :p_payor_code_mc, :p_agreement_type_id, :p_provider_code, :p_service_name, " +
+                         "BEGIN INSERT_TBL_PROVIDER_TARIF(:p_group_service, :p_sub_service, :p_provider_service_code, :p_upload_reff, :p_payor_code_indemnity, :p_payor_code_mc, :p_agreement_type_id, :p_provider_code, :p_service_name, " +
                          ":p_service_class, :p_price, :p_fixed_price, :p_disc, :p_disc_amount, :p_effective_date, :p_admedika_detail_service_code, :cv_1); END;",
                          new OracleParameter("p_group_service", param.group_service),
                          new OracleParameter("p_sub_service", param.sub_service),
