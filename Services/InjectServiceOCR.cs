@@ -111,6 +111,13 @@ namespace InjectServiceWorker.Services
 
                 Console.WriteLine($"Processing file: {filename}");
 
+                // Generate timestamped filename
+                string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(filename);
+                string fileExtension = Path.GetExtension(filename);
+                string timestampedFilename = $"{fileNameWithoutExtension}_{timestamp}{fileExtension}";
+                string newFilePath = Path.Combine(donePath, timestampedFilename);
+
                 // Get the first sheet
                 var sheet = workbook.GetSheetAt(0);
                 int processedRows = 0;
@@ -131,7 +138,7 @@ namespace InjectServiceWorker.Services
                         if (rowData.Count > 0 && rowData[0] != null)
                         {
                             InjectServiceOCRModel model = new InjectServiceOCRModel();
-                            model.upload_reff = filename;
+                            model.upload_reff = timestampedFilename;
                             model.provider_service_code = rowData[11]?.ToString();
                             model.payor_code_indemnity = rowData[0]?.ToString();
                             model.payor_code_mc = rowData[1]?.ToString();
@@ -166,7 +173,7 @@ namespace InjectServiceWorker.Services
                 Console.WriteLine($"Processed {processedRows} rows from file: {filename}");
 
                 // Move file to done path after successful processing
-                MoveFile(filePath, donePath);
+                MoveFile(filePath, newFilePath);
             }
         }
 
@@ -205,7 +212,7 @@ namespace InjectServiceWorker.Services
             }
         }
 
-        public void MoveFile(string sourceFile, string destinationFolder)
+        public void MoveFile(string sourceFile, string destinationFile)
         {
             try
             {
@@ -217,9 +224,9 @@ namespace InjectServiceWorker.Services
                 }
 
                 // Create destination directory if it doesn't exist
-                Directory.CreateDirectory(destinationFolder);
+                //Directory.CreateDirectory(destinationFolder);
 
-                string destinationFile = Path.Combine(destinationFolder, Path.GetFileName(sourceFile));
+                //string destinationFile = Path.Combine(destinationFolder, Path.GetFileName(sourceFile));
 
                 // Perform the move operation
                 File.Move(sourceFile, destinationFile, overwrite: true);
