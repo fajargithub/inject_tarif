@@ -93,6 +93,99 @@ namespace InjectServiceWorker.Services
             }
         }
 
+        public class RemarksModel
+        { 
+            public string? Category { get; set; }
+            public string? Remarks { get; set; }
+        }
+
+        private async Task ProcessExcelSheet2(string? payor_code_idm, string? payor_code_mc, string? provider_code, ISheet sheet2)
+        {
+            List<RemarksModel> remarkList = new List<RemarksModel>();
+
+            if (sheet2 != null && !string.IsNullOrEmpty(payor_code_idm) && !string.IsNullOrEmpty(payor_code_mc) && !string.IsNullOrEmpty(provider_code))
+            {
+                string currentCategory = "";
+                List<string> currentRemarks = new List<string>();
+
+                for (int row = 1; row <= sheet2.LastRowNum; row++)
+                {
+                    var currentRow = sheet2.GetRow(row);
+                    if (currentRow == null) continue;
+
+                    // Get category from column A
+                    var categoryCell = currentRow.GetCell(0);
+                    var remarksCell = currentRow.GetCell(1);
+
+                    string category = categoryCell?.ToString()?.Trim() ?? "";
+                    string remark = remarksCell?.ToString()?.Trim() ?? "";
+
+                    // If we found a new category and we have accumulated remarks from previous category
+                    if (!string.IsNullOrEmpty(category) && currentRemarks.Any())
+                    {
+                        // Save the previous category with its joined remarks
+                        remarkList.Add(new RemarksModel
+                        {
+                            Category = currentCategory,
+                            Remarks = string.Join("\n", currentRemarks)
+                        });
+
+                        // Reset for new category
+                        currentRemarks.Clear();
+                    }
+
+                    // Set current category if we found a new one
+                    if (!string.IsNullOrEmpty(category))
+                    {
+                        currentCategory = category;
+                    }
+
+                    // Add remark to current category if not empty
+                    if (!string.IsNullOrEmpty(remark))
+                    {
+                        currentRemarks.Add(remark);
+                    }
+                }
+
+                // Don't forget to add the last category after loop ends
+                if (!string.IsNullOrEmpty(currentCategory) && currentRemarks.Any())
+                {
+                    remarkList.Add(new RemarksModel
+                    {
+                        Category = currentCategory,
+                        Remarks = string.Join("\n", currentRemarks)
+                    });
+                }
+
+                // Print for debugging
+                if (remarkList.Count > 0)
+                {
+                    foreach (var remark in remarkList)
+                    {
+                        try
+                        {
+                            // Execute the stored procedure
+                            var result = await _dbContext.Database.ExecuteSqlRawAsync(
+                                     "BEGIN INSERT_TBL_PROVIDER_TARIF_INFO(:p_payor_code_indemnity, :p_payor_code_mc, :p_provider_code, :p_category, :p_remarks, :cv_1); END;",
+                                     new OracleParameter("p_payor_code_indemnity", payor_code_idm),
+                                     new OracleParameter("p_payor_code_mc", payor_code_mc),
+                                     new OracleParameter("p_provider_code", provider_code),
+                                     new OracleParameter("p_category", remark.Category),
+                                     new OracleParameter("p_remarks", remark.Remarks),
+                                     new OracleParameter("cv_1", OracleDbType.RefCursor, System.Data.ParameterDirection.Output)
+                                 );
+
+                            Console.WriteLine(result);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine(ex);
+                        }
+                    }
+                }
+            }
+        }
+
         private async Task ProcessExcelFile(string filePath, string donePath, string invalidPath)
         {
             IWorkbook workbook;
@@ -122,6 +215,10 @@ namespace InjectServiceWorker.Services
                 var sheet = workbook.GetSheetAt(0);
                 int processedRows = 0;
 
+                string? payor_code_idm = string.Empty;
+                string? payor_code_mc = string.Empty;
+                string? provider_code = string.Empty;
+
                 // Read all rows starting from row 1 (skip header)
                 for (int row = 1; row <= sheet.LastRowNum; row++)
                 {
@@ -137,6 +234,13 @@ namespace InjectServiceWorker.Services
 
                         if (rowData.Count > 0 && rowData[0] != null)
                         {
+                            if (row == 1)
+                            { 
+                                payor_code_idm = rowData[0]?.ToString();
+                                payor_code_mc = rowData[1]?.ToString();
+                                provider_code = rowData[10]?.ToString();
+                            }
+
                             InjectServiceOCRModel model = new InjectServiceOCRModel();
                             model.upload_reff = timestampedFilename;
                             model.provider_service_code = rowData[11]?.ToString();
@@ -149,9 +253,8 @@ namespace InjectServiceWorker.Services
                             model.service_name = rowData[12]?.ToString();
                             model.service_class = rowData[14]?.ToString();
                             model.price = rowData[15] != null && decimal.TryParse(rowData[15].ToString(), out decimal price) ? price : 0;
-                            model.fixed_price = rowData[16] != null && decimal.TryParse(rowData[16].ToString(), out decimal fixedPrice) ? fixedPrice : 0;
+                            model.disc_amount = rowData[16] != null && decimal.TryParse(rowData[16].ToString(), out decimal fixedPrice) ? fixedPrice : 0;
                             model.disc = rowData[17] != null && decimal.TryParse(rowData[17].ToString(), out decimal disc) ? disc : 0;
-                            model.disc_amount = 0;
 
                             if (rowData[31] != null && DateTime.TryParseExact(rowData[31].ToString(), "dd-MMM-yyyy", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out DateTime effectiveDate))
                             {
@@ -170,6 +273,13 @@ namespace InjectServiceWorker.Services
                     }
                 }
 
+                //process Sheet 2 for remarks
+                if (workbook.NumberOfSheets == 2)
+                {
+                    var sheet2 = workbook.GetSheetAt(1); // Sheet2 is at index 1
+                    await ProcessExcelSheet2(payor_code_idm, payor_code_mc, provider_code, sheet2);
+                }
+
                 Console.WriteLine($"Processed {processedRows} rows from file: {filename}");
 
                 // Move file to done path after successful processing
@@ -184,7 +294,7 @@ namespace InjectServiceWorker.Services
                 // Execute the stored procedure
                 var result = await _dbContext.Database.ExecuteSqlRawAsync(
                          "BEGIN INSERT_TBL_PROVIDER_TARIF(:p_group_service, :p_sub_service, :p_provider_service_code, :p_upload_reff, :p_payor_code_indemnity, :p_payor_code_mc, :p_agreement_type_id, :p_provider_code, :p_service_name, " +
-                         ":p_service_class, :p_price, :p_fixed_price, :p_disc, :p_disc_amount, :p_effective_date, :p_admedika_detail_service_code, :cv_1); END;",
+                         ":p_service_class, :p_price, :p_disc, :p_disc_amount, :p_effective_date, :p_admedika_detail_service_code, :cv_1); END;",
                          new OracleParameter("p_group_service", param.group_service),
                          new OracleParameter("p_sub_service", param.sub_service),
                          new OracleParameter("p_provider_service_code", param.provider_service_code),
@@ -196,7 +306,6 @@ namespace InjectServiceWorker.Services
                          new OracleParameter("p_service_name", param.service_name),
                          new OracleParameter("p_service_class", param.service_class),
                          new OracleParameter("p_price", param.price),
-                         new OracleParameter("p_fixed_price", param.fixed_price),
                          new OracleParameter("p_disc", param.disc),
                          new OracleParameter("p_disc_amount", param.disc_amount),
                          new OracleParameter("p_effective_date", OracleDbType.Date, param.effective_date, System.Data.ParameterDirection.Input),

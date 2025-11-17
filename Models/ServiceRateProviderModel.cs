@@ -37,7 +37,6 @@ namespace InjectServiceWorker.Models
         public string? service_name { get; set; }
         public string? service_class { get; set; }
         public decimal? price { get; set; }
-        public decimal? fixed_price { get; set; }
         public decimal? disc { get; set; }
         public decimal? disc_amount { get; set; }
         public DateTime? effective_date { get; set; }
